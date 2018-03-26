@@ -1,7 +1,9 @@
 package robots
 
 import (
-	"regexp"
+	"bufio"
+	"io"
+	"reflect"
 	"strings"
 )
 
@@ -9,29 +11,42 @@ import (
 // of items that can be in a /robots.txt file
 type Robot struct {
 	// Standard Directives
-	UserAgents []string
-	Disallow   []string
+	Disallow   []string `target:"disallow" name:"Disallow"`
+	UserAgents []string `target:"user-agent" name:"User-Agent"`
 
 	// Non-standard Directives
+	Extra []string
 }
 
-// ParseRobots uses regular expressions on each line to get the useful data
+// Parse uses regular expressions on each line to get the useful data
 // from the robots.txt file given as a string
-func ParseRobots(robotFile string) (robot Robot) {
-	disallowRegex := regexp.MustCompile("^(Disallow:) (.+)")
-	userAgentRegex := regexp.MustCompile("^(User-Agent:) (.+)")
+func Parse(inputFile io.Reader) (robot Robot, err error) {
+	inputBuf := bufio.NewScanner(inputFile)
 
-	for _, line := range strings.Split(robotFile, "\n") {
-		disallowSubmatches := disallowRegex.FindStringSubmatch(line)
-		if len(disallowSubmatches) == 3 {
-			robot.Disallow = append(robot.Disallow, disallowSubmatches[2])
+	robotValue := reflect.ValueOf(&robot).Elem()
+	robotT := robotValue.Type()
+
+	for inputBuf.Scan() {
+		line := inputBuf.Text()
+		foundTag := false
+		// Find which field has the correct target
+		for i := 0; i < robotT.NumField(); i++ {
+			field := robotValue.Field(i)
+			target := robotT.Field(i).Tag.Get("target") + ": "
+			if len(line) < len(target) {
+				continue
+			}
+			actual := strings.ToLower(line[0:len(target)])
+			if actual == target {
+				value := line[len(target):]
+				newSlice := reflect.Append(field, reflect.ValueOf(value))
+				field.Set(newSlice)
+				foundTag = true
+			}
 		}
-
-		userAgentSubmatches := userAgentRegex.FindStringSubmatch(line)
-		if len(userAgentSubmatches) == 3 {
-			robot.UserAgents = append(robot.UserAgents, userAgentSubmatches[2])
+		if !foundTag {
+			robot.Extra = append(robot.Extra, line)
 		}
 	}
-
 	return
 }
