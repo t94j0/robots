@@ -1,3 +1,5 @@
+// Package robots parses robots.txt files from: http://www.robotstxt.org/orig.html.
+
 package robots
 
 import (
@@ -38,7 +40,7 @@ func Parse(inputFile io.Reader) (robot Robot, err error) {
 			}
 			actual := strings.ToLower(line[0:len(target)])
 			if actual == target {
-				value := line[len(target):]
+				value := strings.TrimSpace(line[len(target):])
 				newSlice := reflect.Append(field, reflect.ValueOf(value))
 				field.Set(newSlice)
 				foundTag = true

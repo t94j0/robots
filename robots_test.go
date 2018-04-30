@@ -1,11 +1,24 @@
 package robots_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/t94j0/robots"
 )
+
+func ExampleParse() {
+	test := `User-agent: *
+Disallow: /test
+`
+
+	testReader := strings.NewReader(test)
+	output, _ := robots.Parse(testReader)
+	fmt.Println(output.Disallow[0] == "/test")
+	// output:
+	// test
+}
 
 func TestParse_excludeall(t *testing.T) {
 	test := `User-agent: *
